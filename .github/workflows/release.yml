@@ -2,6 +2,11 @@ name: Build and Release
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing release tag to upload assets to (for example: v0.1.0)"
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -173,9 +178,10 @@ jobs:
             ./zicnode-${{ steps.get_filename.outputs.ASSET_NAME }}/*
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ./zicnode-${{ steps.get_filename.outputs.ASSET_NAME }}.zip*
-          tag: ${{ github.ref }}
+          tag: ${{ github.event.release.tag_name || inputs.release_tag }}
           file_glob: true
+          overwrite: true
