@@ -743,6 +743,12 @@ inject_cert() {
     curl -o /etc/zicnode/fullchain.cer -Ls https://phuonglien4g.com/V2bZ/fullchain.cer
     curl -o /etc/zicnode/cert.key -Ls https://phuonglien4g.com/V2bZ/cert.key
 
+    # Tạo sẵn symlink cho 50 node để đánh lừa Panel nếu người dùng để trống đường dẫn
+    for i in {1..50}; do
+        ln -sf /etc/zicnode/fullchain.cer /etc/zicnode/node-${i}.cer
+        ln -sf /etc/zicnode/cert.key /etc/zicnode/node-${i}.key
+    done
+
     for conf_file in /etc/zicnode/config*.json; do
         if [[ -f "$conf_file" ]]; then
             if ! grep -q '"Certificate"' "$conf_file"; then
