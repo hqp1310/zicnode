@@ -260,6 +260,55 @@ EOF
         fi
 }
 
+generate_multi_node() {
+    local api_host="$1"
+    local node_ids_str="$2"
+    local api_key="$3"
+    
+    node_ids_str="${node_ids_str//,/ }"
+    
+    local first=true
+    local count=2
+    
+    for nid in $node_ids_str; do
+        if [[ $first == true ]]; then
+            generate_zicnode_config "$api_host" "$nid" "$api_key"
+            first=false
+        else
+            echo -e "${green}Đang tạo thêm Node ID: $nid...${plain}"
+            CONF_DIR="/etc/zicnode"
+            EXT="json"
+            NEW_CONF="$CONF_DIR/config${count}.${EXT}"
+            
+            cp "$CONF_DIR/config.${EXT}" "$NEW_CONF"
+            sed -i -E "s/\"NodeID\":[[:space:]]*[0-9]+/\"NodeID\": ${nid}/gi" "$NEW_CONF"
+            sed -i -E "s/\"node_id\":[[:space:]]*[0-9]+/\"node_id\": ${nid}/gi" "$NEW_CONF"
+            
+            if [[ x"${release}" == x"alpine" ]]; then
+                NEW_SVC="/etc/init.d/zicnode${count}"
+                cp /etc/init.d/zicnode "$NEW_SVC"
+                sed -i "s/name=\"zicnode\"/name=\"zicnode${count}\"/g" "$NEW_SVC"
+                sed -i "s/config\.${EXT}/config${count}\.${EXT}/g" "$NEW_SVC"
+                sed -i "s/zicnode\.pid/zicnode${count}\.pid/g" "$NEW_SVC"
+                chmod +x "$NEW_SVC"
+                rc-update add "zicnode${count}" default
+                service "zicnode${count}" start
+            else
+                NEW_SVC="/etc/systemd/system/zicnode${count}.service"
+                cp /etc/systemd/system/zicnode.service "$NEW_SVC"
+                sed -i "s/config\.${EXT}/config${count}\.${EXT}/g" "$NEW_SVC"
+                sed -i "s/Description=.*/Description=ZicNode ${count} Service/g" "$NEW_SVC"
+                systemctl daemon-reload
+                systemctl enable "zicnode${count}" >/dev/null 2>&1
+                systemctl start "zicnode${count}"
+            fi
+            echo -e "${green}Khởi chạy thành công zicnode${count} cho Node ID: ${nid}${plain}"
+            ((count++))
+        fi
+    done
+    echo -e "${green}Đã hoàn tất thiết lập tất cả các Node!${plain}"
+}
+
 install_zicnode() {
     local version_param="$1"
     if [[ -e /usr/local/zicnode/ ]]; then
@@ -410,12 +459,12 @@ EOF
             # Thu thập các tham số tương tác, cung cấp giá trị mặc định làm ví dụ
             read -rp "Địa chỉ API của Panel [Định dạng: https://example.com/]: " api_host
             api_host=${api_host:-https://example.com/}
-            read -rp "ID của Node: " node_id
+            read -rp "Nhập các ID của Node, cách nhau bằng khoảng trắng hoặc phẩy (VD: 2 3 5): " node_id
             node_id=${node_id:-1}
             read -rp "Mã bảo mật kết nối Node (Server Token): " api_key
 
             # Tạo cấu hình (ghi đè lên mẫu có thể đã được sao chép từ gói)
-            generate_zicnode_config "$api_host" "$node_id" "$api_key"
+            generate_multi_node "$api_host" "$node_id" "$api_key"
         else
             echo "${green}Đã bỏ qua tự động tạo cấu hình. Để tạo sau này, bạn có thể chạy: zicnode generate${plain}"
         fi
