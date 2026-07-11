@@ -247,56 +247,6 @@ EOF
         if [[ x"${release}" == x"alpine" ]]; then
             service zicnode restart
         else
-            systemctl restart zicnode
-        fi
-        sleep 2
-        check_status
-        echo -e ""
-        if [[ $? == 0 ]]; then
-            echo -e "${green}zicnode khởi động lại thành công${plain}"
-        else
-            echo -e "${red}zicnode có thể đã khởi động thất bại, vui lòng sử dụng lệnh 'zicnode log' để kiểm tra nhật ký lỗi${plain}"
-        fi
-}
-
-install_zicnode() {
-    local version_param="$1"
-    if [[ -e /usr/local/zicnode/ ]]; then
-        rm -rf /usr/local/zicnode/
-    fi
-
-    mkdir /usr/local/zicnode/ -p
-    cd /usr/local/zicnode/
-
-    if  [[ -z "$version_param" ]] ; then
-        last_version=$(curl -Ls "https://api.github.com/repos/${repo}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-        if [[ ! -n "$last_version" ]]; then
-            echo -e "${red}Phát hiện phiên bản zicnode thất bại: repo ${repo} chưa có GitHub Release mới nhất hoặc GitHub API đang giới hạn. Vui lòng tạo release hoặc chỉ định phiên bản cài đặt thủ công.${plain}"
-            exit 1
-        fi
-        echo -e "${green}Phát hiện phiên bản mới nhất: ${last_version}, bắt đầu cài đặt...${plain}"
-        url="https://github.com/${repo}/releases/download/${last_version}/zicnode-linux-${arch}.zip"
-        curl -fsL "$url" | pv -s 30M -W -N "Tiến trình tải" > /usr/local/zicnode/zicnode-linux.zip
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}Tải xuống zicnode thất bại, vui lòng đảm bảo máy chủ của bạn có thể tải xuống tệp tin từ GitHub${plain}"
-            exit 1
-        fi
-    else
-    last_version=$version_param
-        url="https://github.com/${repo}/releases/download/${last_version}/zicnode-linux-${arch}.zip"
-        curl -fsL "$url" | pv -s 30M -W -N "Tiến trình tải" > /usr/local/zicnode/zicnode-linux.zip
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}Tải xuống zicnode phiên bản $1 thất bại, vui lòng đảm bảo phiên bản này tồn tại${plain}"
-            exit 1
-        fi
-    fi
-
-    unzip zicnode-linux.zip
-    rm zicnode-linux.zip -f
-    chmod +x zicnode
-    mkdir /etc/zicnode/ -p
-    cp geoip.dat /etc/zicnode/
-    cp geosite.dat /etc/zicnode/
     if [[ x"${release}" == x"alpine" ]]; then
         rm /etc/init.d/zicnode -f
         cat <<EOF > /etc/init.d/zicnode
@@ -379,7 +329,7 @@ EOF
     fi
 
 
-    curl -o /usr/bin/zicnode -Ls https://raw.githubusercontent.com/${repo}/main/script/zicnode.sh
+    curl -o /usr/bin/zicnode -Ls https://raw.githubusercontent.com/${script_repo}/main/script/zicnode.sh
     chmod +x /usr/bin/zicnode
 
     cd $cur_dir
